@@ -1,0 +1,6 @@
+IMPLEMENTATION_PLAN.md
+NEXT_STEPS.md
+STATUS.md
+.venv
+__pycache__/
+*.py[cod]
