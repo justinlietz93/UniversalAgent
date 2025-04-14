@@ -6,7 +6,17 @@ from typing import Dict, Any, List
 
 from src.universal_agent.interfaces.types import ToolResult
 
-from ..utils import safe_path, read_file, read_file_lines, edit_lines, str_replace, write_file
+from ..utils import (
+    safe_path, 
+    read_file, 
+    read_file_lines, 
+    edit_lines, 
+    str_replace, 
+    write_file,
+    verify_lines_context,
+    verify_text_context,
+    format_diff_with_context
+)
 
 
 async def handle_edit_lines(
@@ -17,7 +27,9 @@ async def handle_edit_lines(
     end_line: int, 
     content: str, 
     file_history: Dict,
-    snippet_lines: int = 4
+    snippet_lines: int = 4,
+    expected_lines: List[str] = None,
+    validate: bool = True
 ) -> ToolResult:
     """
     Handle the edit_lines operation.
@@ -31,6 +43,9 @@ async def handle_edit_lines(
         content: New content for the specified lines
         file_history: Dictionary for tracking file history
         snippet_lines: Number of context lines to show around edits
+        expected_lines: If provided, these lines must match the current content
+                        in the target line range for the edit to proceed
+        validate: Whether to perform pre-validation (default: True)
         
     Returns:
         ToolResult with operation result
@@ -38,12 +53,45 @@ async def handle_edit_lines(
     try:
         full_path = safe_path(repo_root, path)
         
+        # Pre-validation: Check if the current content matches expectations
+        if validate:
+            try:
+                lines = read_file_lines(full_path)
+                
+                # Validate line range
+                if start_line < 1 or end_line > len(lines):
+                    return create_result_method(
+                        success=False,
+                        error=f"Line numbers out of range (1-{len(lines)})"
+                    )
+                
+                # If expected_lines is provided, validate they match current content
+                if expected_lines is not None:
+                    is_valid, error_msg = verify_lines_context(
+                        full_path,
+                        start_line,
+                        end_line,
+                        expected_lines
+                    )
+                    
+                    if not is_valid:
+                        return create_result_method(
+                            success=False,
+                            error=f"Pre-validation failed: {error_msg}"
+                        )
+            except Exception as e:
+                return create_result_method(
+                    success=False,
+                    error=f"Error during pre-validation: {str(e)}"
+                )
+        
         # Save history (for potential undo)
         try:
             file_history[full_path].append(read_file(full_path))
         except Exception:
             pass
         
+        # Proceed with the edit
         edit_lines(full_path, start_line, end_line, content)
         
         # Create a snippet of the edited region plus context
@@ -75,7 +123,9 @@ async def handle_insert(
     insert_line: int, 
     content: str, 
     file_history: Dict,
-    snippet_lines: int = 4
+    snippet_lines: int = 4,
+    context_line: str = None,
+    validate: bool = True
 ) -> ToolResult:
     """
     Handle the insert operation.
@@ -88,6 +138,9 @@ async def handle_insert(
         content: Content to insert
         file_history: Dictionary for tracking file history
         snippet_lines: Number of context lines to show around edits
+        context_line: If provided, the line before/at insertion point must match this
+                      for the insert to proceed (used for pre-validation)
+        validate: Whether to perform pre-validation (default: True)
         
     Returns:
         ToolResult with operation result
@@ -95,20 +148,43 @@ async def handle_insert(
     try:
         full_path = safe_path(repo_root, path)
         
+        # Read existing lines for validation
+        lines = read_file_lines(full_path)
+        
+        # Pre-validation
+        if validate:
+            try:
+                # Validate line range
+                if insert_line < 0 or insert_line > len(lines):
+                    return create_result_method(
+                        success=False, 
+                        error=f"Invalid insert line {insert_line} for file with {len(lines)} lines"
+                    )
+                
+                # If context_line is provided, validate it matches the line at the insertion point
+                # (or the line before if inserting at the end)
+                if context_line is not None:
+                    check_line_idx = min(insert_line, len(lines)) - 1
+                    if check_line_idx >= 0:
+                        actual_line = lines[check_line_idx].rstrip('\n')
+                        if actual_line != context_line:
+                            error_msg = (
+                                f"Pre-validation failed: Context mismatch at line {check_line_idx + 1}\n"
+                                f"Expected: {context_line}\n"
+                                f"Found:    {actual_line}"
+                            )
+                            return create_result_method(success=False, error=error_msg)
+            except Exception as e:
+                return create_result_method(
+                    success=False,
+                    error=f"Error during pre-validation: {str(e)}"
+                )
+        
         # Save history (for potential undo)
         try:
             file_history[full_path].append(read_file(full_path))
         except Exception:
             pass
-        
-        # Read existing lines
-        lines = read_file_lines(full_path)
-        
-        if insert_line < 0 or insert_line > len(lines):
-            return create_result_method(
-                success=False, 
-                error=f"Invalid insert line {insert_line} for file with {len(lines)} lines"
-            )
         
         # Split content into lines and add newlines
         content_lines = [line + '\n' for line in content.splitlines()]
@@ -147,7 +223,9 @@ async def handle_str_replace(
     old_str: str, 
     new_str: str, 
     file_history: Dict,
-    snippet_lines: int = 4
+    snippet_lines: int = 4,
+    validate: bool = True,
+    expected_content: str = None
 ) -> ToolResult:
     """
     Handle the str_replace operation.
@@ -160,12 +238,49 @@ async def handle_str_replace(
         new_str: String to replace with
         file_history: Dictionary for tracking file history
         snippet_lines: Number of context lines to show around edits
+        validate: Whether to perform pre-validation (default: True)
+        expected_content: If provided, the file must contain this exact content
+                          for the replacement to proceed (for pre-validation)
         
     Returns:
         ToolResult with operation result
     """
     try:
         full_path = safe_path(repo_root, path)
+        
+        # Pre-validation
+        if validate:
+            try:
+                # Verify if old_str exists in the file
+                is_valid, error_msg = verify_text_context(
+                    full_path, 
+                    old_str, 
+                    f"in '{path}'"
+                )
+                
+                if not is_valid:
+                    return create_result_method(
+                        success=False,
+                        error=f"Pre-validation failed: {error_msg}"
+                    )
+                
+                # If expected_content is provided, validate the file has this exact content
+                if expected_content is not None:
+                    content = read_file(full_path)
+                    if content != expected_content:
+                        error_msg = format_diff_with_context(
+                            content.splitlines(), 
+                            expected_content.splitlines()
+                        )
+                        return create_result_method(
+                            success=False,
+                            error=f"Pre-validation failed: File content has changed since last read:\n{error_msg}"
+                        )
+            except Exception as e:
+                return create_result_method(
+                    success=False,
+                    error=f"Error during pre-validation: {str(e)}"
+                )
         
         # Save history (for potential undo)
         try:
@@ -174,7 +289,14 @@ async def handle_str_replace(
             pass
         
         # Replace the string and get affected line numbers
-        new_content, line_numbers = str_replace(full_path, old_str, new_str)
+        try:
+            new_content, line_numbers = str_replace(full_path, old_str, new_str)
+        except ValueError as e:
+            # Additional error handling for a better user experience
+            return create_result_method(
+                success=False,
+                error=f"String replacement failed: {str(e)}"
+            )
         
         # Create a snippet around the edit
         lines = new_content.splitlines()

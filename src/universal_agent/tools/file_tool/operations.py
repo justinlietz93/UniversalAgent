@@ -37,6 +37,9 @@ class FileOperation(str, Enum):
     COPY = "copy"
     MOVE = "move"
     
+    # New advanced operations
+    PATCH = "patch"
+    
     # Legacy operation names (for backward compatibility)
     VIEW = "view"
     CREATE = "create"

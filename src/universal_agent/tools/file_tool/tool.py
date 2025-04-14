@@ -20,6 +20,7 @@ from .handlers.write_handlers import handle_write, handle_append
 from .handlers.edit_handlers import handle_edit_lines, handle_insert, handle_str_replace, handle_undo_edit
 from .handlers.dir_handlers import handle_list_dir, handle_mkdir, handle_delete
 from .handlers.file_handlers import handle_copy, handle_move
+from .handlers.patch_handlers import handle_patch
 
 # Load environment variables
 load_dotenv()
@@ -81,18 +82,26 @@ class FileTool(BaseTool):
     def _generate_description(self) -> str:
         """Generate a comprehensive description of the tool."""
         return (
-            "A unified file system tool that provides comprehensive file and directory operations.\n\n"
+            "A unified file system tool that provides comprehensive file and directory operations with robust error handling and pre-validation.\n\n"
             "Core Operations:\n"
             "- Reading files: read entire files, specific line ranges, or chunks\n"
             "- Writing files: create new files, append to existing files\n"
-            "- Editing files: replace specific lines, find and replace strings\n"
+            "- Editing files: replace specific lines, find and replace strings, with pre-validation\n"
+            "- Patch files: apply standard unified diff/patch format to files with validation\n"
             "- Directory operations: create, delete, list contents\n"
             "- File management: copy, move, delete files\n\n"
+            
+            "Enhanced Features:\n"
+            "- Pre-validation of edits to prevent applying changes to outdated file state\n"
+            "- Detailed error messages with context and diffs when validation fails\n"
+            "- Patch application with context verification for targeted edits\n"
+            "- Edit history for undo operations\n\n"
             
             "Example Usage:\n"
             "- Read a file: {'operation': 'read', 'path': 'path/to/file.py'}\n"
             "- Write a file: {'operation': 'write', 'path': 'path/to/file.py', 'content': '# New content'}\n"
             "- Edit specific lines: {'operation': 'edit_lines', 'path': 'file.py', 'start_line': 10, 'end_line': 15, 'content': 'new code'}\n"
+            "- Apply a patch: {'operation': 'patch', 'path': 'file.py', 'content': '@@ -10,7 +10,7 @@\\n line1\\n-old line\\n+new line\\n line3'}\n"
             "- List directory: {'operation': 'list_dir', 'path': 'src', 'recursive': true}\n"
             "- Copy file: {'operation': 'copy', 'path': 'source.py', 'dest': 'destination.py'}\n"
         )
@@ -221,6 +230,22 @@ class FileTool(BaseTool):
                     },
                     "then": {
                         "required": ["path", "dest"]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "operation": {"enum": ["patch"]}
+                        }
+                    },
+                    "then": {
+                        "required": ["path", "content"],
+                        "properties": {
+                            "dry_run": {
+                                "type": "boolean",
+                                "description": "If true, validate but don't apply the patch"
+                            }
+                        }
                     }
                 }
             ]
@@ -364,6 +389,18 @@ class FileTool(BaseTool):
             elif operation == FileOperation.MOVE:
                 dest = params.get("dest", "")
                 return await handle_move(create_result_method, self.repo_root, path_param, dest, self._file_history)
+                
+            elif operation == FileOperation.PATCH:
+                patch_content = params.get("content", "")
+                dry_run = params.get("dry_run", False)
+                return await handle_patch(
+                    create_result_method,
+                    self.repo_root,
+                    path_param,
+                    patch_content,
+                    dry_run,
+                    self._file_history
+                )
                 
             else:
                 return self.create_error_result(f"Operation not implemented: {operation}")
