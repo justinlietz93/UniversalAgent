@@ -3,6 +3,20 @@
 from typing import Dict, Any, List, Type
 from .tool_base import Tool
 from .config import Config
+from typing import Dict, Any, List, Type
+from .tool_base import Tool
+from .config import Config
+
+# Import all available tools
+from .shell_tool import ShellTool
+from .requests_tool import RequestsTool
+from .file_tool import FileTool
+from .web_search_tool import WebSearchTool
+from .web_browser_tool import WebBrowserTool
+from .doc_check_tool import DocCheckTool
+from .package_manager_tool import PackageManagerTool
+from .advanced_file_tool import AdvancedFileTool
+from .code_runner_tool import CodeRunnerTool
 
 # Import all available tools
 from .shell_tool import ShellTool
@@ -122,5 +136,3 @@ class ToolManager:
         """
         tool = self.get_tool(name)
         return tool.run(tool_call_id, **kwargs)
-
-    

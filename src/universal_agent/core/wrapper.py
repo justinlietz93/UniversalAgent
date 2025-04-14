@@ -11,11 +11,13 @@ from typing import Dict, List, Any, Optional, Union, AsyncGenerator
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-# Use absolute import from src
-from src.config import get_provider_config, get_adapter_class_name
+
+# Import required modules
 from ..adapters.adapter_factory import get_adapter_class
-from ..tools.base_tool import BaseTool
+from ..tools.tool_manager import ToolManager
 from ..utils.streaming import StreamingManager
+from src.config import get_provider_config, get_adapter_class_name
+from ..utils.nlp_parser import NlpParser
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +50,8 @@ class UniversalAgent:
         # Get adapter-specific configuration
         self.provider_config = get_provider_config(self.provider, "tool_capabilities")
         
-        # Initialize tools registry
-        self.tools: Dict[str, BaseTool] = {}
+        # Initialize tool manager
+        self.tool_manager = ToolManager()
         
         # Initialize adapter
         self._initialize_adapter()
@@ -78,31 +80,27 @@ class UniversalAgent:
         
         logger.info(f"Initialized adapter: {adapter_class_name}")
     
-    def register_tool(self, name: str, tool: BaseTool) -> None:
+    def register_tool(self, tool) -> None:
         """
-        Register a tool with the agent.
+        Register a tool with the agent using ToolManager.
         
         Args:
-            name: The name to register the tool under
             tool: The tool to register
         """
-        if name in self.tools:
-            logger.warning(f"Tool '{name}' already registered, overwriting")
-        
-        self.tools[name] = tool
-        logger.info(f"Registered tool: {name}")
+        self.tool_manager.register_tool(tool)
+        logger.info(f"Registered tool: {tool.name}")
     
     def unregister_tool(self, name: str) -> None:
         """
-        Unregister a tool from the agent.
+        Unregister a tool from the agent using ToolManager.
         
         Args:
             name: The name of the tool to unregister
         """
-        if name in self.tools:
-            del self.tools[name]
+        try:
+            self.tool_manager.unregister_tool(name)
             logger.info(f"Unregistered tool: {name}")
-        else:
+        except KeyError:
             logger.warning(f"Tool '{name}' not found, cannot unregister")
     
     def get_tool_descriptions(self) -> List[Dict[str, Any]]:
@@ -112,17 +110,7 @@ class UniversalAgent:
         Returns:
             List of tool descriptions
         """
-        tool_descriptions = []
-        
-        for name, tool in self.tools.items():
-            tool_description = {
-                "name": tool._name if hasattr(tool, "_name") else name,
-                "description": tool._description if hasattr(tool, "_description") else "",
-                "input_schema": tool._input_schema if hasattr(tool, "_input_schema") else {}
-            }
-            
-            tool_descriptions.append(tool_description)
-        
+        tool_descriptions = self.tool_manager.list_tools()
         return tool_descriptions
     
     async def execute_tool(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,18 +123,18 @@ class UniversalAgent:
         Returns:
             The result of the tool execution
         """
-        tool_name = tool_call.get("tool")
+        tool_name = tool_call.get("name")
         tool_args = tool_call.get("arguments", {})
         
         if not tool_name:
             logger.error("Tool call missing tool name")
             return {"error": "Tool call missing tool name"}
         
-        if tool_name not in self.tools:
+        try:
+            tool = self.tool_manager.get_tool(tool_name)
+        except KeyError:
             logger.error(f"Tool '{tool_name}' not found")
             return {"error": f"Tool '{tool_name}' not found"}
-        
-        tool = self.tools[tool_name]
         
         try:
             logger.info(f"Executing tool: {tool_name}")
@@ -175,25 +163,34 @@ class UniversalAgent:
         # Get tool descriptions
         tool_descriptions = self.get_tool_descriptions()
         
-        # Generate initial response
-        response = await self.adapter.generate_response(prompt, tool_descriptions)
+        # Create an instance of NlpParser
+        nlp_parser = NlpParser()
         
-        # Check if the response contains a tool call
-        tool_call = self.adapter.extract_tool_call(response)
+        # Parse the NL command to extract tool information
+        agent_request = await nlp_parser.parse(prompt)
+        tool_id = agent_request.get("tool_id")
+        params = agent_request.get("params", {})
         
-        # If no tool call, return the response
-        if not tool_call:
+        if tool_id:
+            # Create a tool call based on the parsed information
+            tool_call = {
+                "name": tool_id,
+                "arguments": params
+            }
+            
+            # Execute the tool
+            tool_result = await self.execute_tool(tool_call)
+            
+            # Process the tool result
+            final_response = await self.adapter.process_tool_result(
+                prompt, "", tool_call, tool_result
+            )
+            
+            return final_response
+        else:
+            # Generate initial response if no tool call is detected
+            response = await self.adapter.generate_response(prompt, tool_descriptions)
             return response
-        
-        # Execute the tool
-        tool_result = await self.execute_tool(tool_call)
-        
-        # Process the tool result
-        final_response = await self.adapter.process_tool_result(
-            prompt, response, tool_call, tool_result
-        )
-        
-        return final_response
     
     async def generate_streaming_response(self, prompt: str) -> AsyncGenerator[str, None]:
         """

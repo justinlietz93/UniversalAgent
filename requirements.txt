@@ -1,0 +1,14 @@
+# Core Universal Agent dependencies
+pydantic>=1.10.0,<2.0.0 # For data validation and settings management
+
+# Mandatory NLP dependency (Phase 3)
+# Using CPU version by default; specify GPU version if needed (e.g., transformers[torch] or transformers[tf])
+transformers>=4.0.0
+# Need a backend for transformers, install PyTorch or TensorFlow separately or via extras
+# Example: pip install torch
+# Example: pip install tensorflow
+
+# Testing dependencies (Optional, add as needed for Phases 2+)
+# pytest>=7.0.0
+# pytest-asyncio>=0.18.0
+# Add other testing/linting tools (flake8, mypy, black) as per APEX_STANDARDS.md if required later
