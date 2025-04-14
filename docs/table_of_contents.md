@@ -56,7 +56,8 @@ Universal Agent is a comprehensive framework for interacting with various LLM pr
 ### Core Tools
 - [File Reader/Writer](api/reference.md#file-tool): File system operations
 - [Shell Tool](api/reference.md#shell-tool): Execute shell commands securely
-- [Web Search Tool](api/reference.md#web-search-tool): Perform web searches
+- [Web Search Tool](guides/web_tools.md#web-search-tool): Perform web searches using Google Custom Search
+- [Web Scraper Tool](guides/web_tools.md#web-scraper-tool): Extract content from URLs with various extraction modes
 - [Code Runner Tool](api/reference.md#code-runner-tool): Execute code in various languages
 - [Package Manager Tool](api/reference.md#package-manager-tool): Manage software packages
 
@@ -66,7 +67,8 @@ Universal Agent is a comprehensive framework for interacting with various LLM pr
 - [Web Browser Tool](api/reference.md#web-browser-tool): Automated web browsing
 
 ### Custom Tools
-- [Creating Custom Tools](api/custom_tools.md): Guide to developing custom tools
+- [Creating Custom Tools](api/custom_tools.md): Guide to provider-based custom tools
+- [Tool Development Guide](creating_tools.md): Step-by-step guide to creating Universal Agent Protocol tools
 - [Tool Registration](api/reference.md#tool-registration): Process for adding tools to the agent
 
 ## API Reference
@@ -107,6 +109,12 @@ Universal Agent is a comprehensive framework for interacting with various LLM pr
 ## Configuration
 
 - [Configuration Guide](guides/configuration.md): Configuring the Universal Agent
+- [Self-Hosted Models](guides/self_hosted.md): Using Universal Agent with self-hosted, OpenAI-compatible models
+  - [Tool Invocation Modes](guides/self_hosted.md#tool-support): Native vs. prompt-engineered tool invocation
+  - [Supported Ollama Models](guides/self_hosted.md#supported-models): Recommended models for different use cases
+- [Web Search & Scraping](guides/web_tools.md): Using web search and scraping capabilities
+  - [Web Search Configuration](guides/web_tools.md#web-search-tool): Setting up Google Custom Search
+  - [Web Scraping Options](guides/web_tools.md#extraction-types): Different content extraction modes
 - [Security Settings](guides/configuration.md#security): Security configuration options
 - [Provider Settings](guides/configuration.md#providers): LLM provider configuration
 

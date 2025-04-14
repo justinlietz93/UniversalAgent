@@ -80,6 +80,12 @@ AUTH_CONFIG = {
         "method": "api_key",
         "header": "Authorization",
         "prefix": "Bearer ",
+    },
+    "openai_compatible": {
+        "method": "api_key",
+        "header": "Authorization",
+        "prefix": "Bearer ",
+        "optional": True  # API key is optional for self-hosted models
     }
 }
 
@@ -110,6 +116,11 @@ TOOL_CAPABILITIES = {
     "mistral": {
         "schema_format": "json_schema",
         "maximum_tools": 32,
+        "supports_multiple_calls": False
+    },
+    "openai_compatible": {
+        "schema_format": "openai_functions",
+        "maximum_tools": 16,
         "supports_multiple_calls": False
     }
 }
@@ -160,6 +171,7 @@ ADAPTER_REGISTRATIONS = [
     ("openai", "OpenAIAdapter"),
     ("anthropic", "AnthropicAdapter"),
     ("mistral", "MistralAdapter"),
+    ("openai_compatible", "OpenAICompatibleAdapter"),  # Add self-hosted OpenAI-compatible adapter
     ("generic", "GenericAdapter")
 ]
 

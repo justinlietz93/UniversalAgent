@@ -1,0 +1,15 @@
+{
+    "universal_agent": {
+        "providers": {
+            "openai_compatible": {
+                "base_url": "http://localhost:11434/v1",
+                "model": "llama3",
+                "temperature": 0.7,
+                "max_tokens": 2048,
+                "system_prompt": "You are a helpful assistant. Answer as concisely as possible.",
+                "tool_invocation_mode": "prompt_engineered"
+            }
+        },
+        "default_provider": "openai_compatible"
+    }
+}

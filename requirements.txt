@@ -1,5 +1,13 @@
 # Core Universal Agent dependencies
 pydantic>=1.10.0,<2.0.0 # For data validation and settings management
+httpx>=0.24.0 # For HTTP requests
+beautifulsoup4>=4.11.0 # For web scraping
+
+# Computer Tool dependencies
+pyautogui>=0.9.53 # For mouse/keyboard control
+pillow>=9.0.0 # For image processing
+screeninfo>=0.8.1 # For multi-monitor support
+pywin32>=300;platform_system=="Windows" # For Windows-specific window management
 
 # Mandatory NLP dependency (Phase 3)
 # Using CPU version by default; specify GPU version if needed (e.g., transformers[torch] or transformers[tf])
@@ -9,6 +17,9 @@ transformers>=4.0.0
 # Example: pip install tensorflow
 
 # Testing dependencies (Optional, add as needed for Phases 2+)
-# pytest>=7.0.0
-# pytest-asyncio>=0.18.0
+pytest>=7.0.0
+pytest-asyncio>=0.18.0
 # Add other testing/linting tools (flake8, mypy, black) as per APEX_STANDARDS.md if required later
+
+# Optional platform-specific dependencies
+# For macOS users: pip install python-quartz

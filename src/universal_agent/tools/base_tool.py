@@ -1,190 +1,136 @@
-"""
-Base tool module for the Universal LLM Tool Wrapper Interface.
+"""Base tool implementation providing utility functions for tool development."""
 
-This module defines the base tool class that all tools must extend.
-"""
-import logging
-import json
-import abc
 from typing import Dict, Any, Optional
+from src.universal_agent.interfaces.i_tool import ITool
+from src.universal_agent.interfaces.types import ToolParams, ToolResult
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-# Use absolute import from src
-from src.config import SECURITY
 
-logger = logging.getLogger(__name__)
-
-class BaseTool(abc.ABC):
+class BaseTool(ITool):
     """
-    Abstract base class for tools.
+    Base implementation of ITool providing common functionality.
     
-    This class defines the interface that all tools must implement.
+    This class implements the basic properties and provides helper methods
+    for parameter validation, error handling, and other common tasks.
+    Tool developers can inherit from this class instead of implementing
+    ITool directly for convenience.
     """
     
-    def __init__(self):
+    def __init__(self, id: str, name: str, description: str):
         """
-        Initialize the base tool.
+        Initialize a BaseTool with core properties.
+        
+        Args:
+            id (str): Unique identifier for the tool.
+            name (str): Human-readable name for the tool.
+            description (str): Description of the tool's functionality.
         """
-        self._name = None
-        self._description = None
-        self._input_schema = None
-        self._output_schema = None
-        # Get sensitive keys from configuration
-        self._sensitive_keys = SECURITY["sensitive_keys"]
+        self._id = id
+        self._name = name
+        self._description = description
+    
+    @property
+    def id(self) -> str:
+        """
+        Get the unique identifier for this tool.
+        
+        Returns:
+            str: The tool ID.
+        """
+        return self._id
     
     @property
     def name(self) -> str:
         """
-        Get the tool name.
+        Get the human-readable name for this tool.
         
         Returns:
-            The tool name
+            str: The tool name.
         """
-        if not self._name:
-            raise ValueError("Tool name is not set")
         return self._name
     
     @property
     def description(self) -> str:
         """
-        Get the tool description.
+        Get the description of this tool.
         
         Returns:
-            The tool description
+            str: The tool description.
         """
-        if not self._description:
-            raise ValueError("Tool description is not set")
         return self._description
     
-    @property
-    def input_schema(self) -> Dict[str, Any]:
+    def get_parameter_schema(self) -> Optional[Dict[str, Any]]:
         """
-        Get the tool input schema.
+        Get the schema for the parameters expected by this tool.
         
         Returns:
-            The input schema as a JSON Schema object
+            Optional[Dict[str, Any]]: JSON Schema for parameters, or None if not defined.
         """
-        if not self._input_schema:
-            raise ValueError("Tool input schema is not set")
-        return self._input_schema
+        # Base implementation returns None
+        # Subclasses should override this method if they want to provide a schema
+        return None
     
-    @property
-    def output_schema(self) -> Dict[str, Any]:
+    async def execute(self, params: ToolParams) -> ToolResult:
         """
-        Get the tool output schema.
+        Execute the tool's logic with the given parameters.
         
-        Returns:
-            The output schema as a JSON Schema object
-        """
-        if not self._output_schema:
-            raise ValueError("Tool output schema is not set")
-        return self._output_schema
-    
-    @abc.abstractmethod
-    async def run(self, **kwargs) -> Dict[str, Any]:
-        """
-        Run the tool.
+        This method must be implemented by subclasses.
         
         Args:
-            **kwargs: Tool input parameters
-            
-        Returns:
-            Tool output
-        """
-        pass
-    
-    def _log_execution(self, kwargs: Dict[str, Any]) -> None:
-        """
-        Log the tool execution.
-        
-        Args:
-            kwargs: Tool input parameters
-        """
-        # Sanitize sensitive values in the log
-        sanitized_kwargs = self._sanitize_sensitive_values(kwargs)
-        logger.info(f"Executing tool {self.name} with parameters: {sanitized_kwargs}")
-    
-    def _log_result(self, result: Dict[str, Any]) -> None:
-        """
-        Log the tool result.
-        
-        Args:
-            result: Tool output
-        """
-        # Sanitize sensitive values in the log
-        sanitized_result = self._sanitize_sensitive_values(result)
-        logger.info(f"Tool {self.name} executed with result: {sanitized_result}")
-    
-    def _sanitize_sensitive_values(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Sanitize sensitive values in the data.
-        
-        Args:
-            data: Data to sanitize
-            
-        Returns:
-            Sanitized data
-        """
-        if not isinstance(data, dict):
-            return data
-        
-        sanitized = {}
-        
-        for key, value in data.items():
-            if any(sensitive_key in key.lower() for sensitive_key in self._sensitive_keys):
-                sanitized[key] = "********"
-            elif isinstance(value, dict):
-                sanitized[key] = self._sanitize_sensitive_values(value)
-            else:
-                sanitized[key] = value
-        
-        return sanitized
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the tool to a dictionary.
+            params (ToolParams): Parameters for the tool execution.
         
         Returns:
-            Dictionary representation of the tool
+            ToolResult: The result of the tool execution.
         """
-        return {
-            "name": self.name,
-            "description": self.description,
-            "input_schema": self.input_schema,
-            "output_schema": self.output_schema
-        }
-
-    @staticmethod
-    def safe_eval(expression: str) -> Any:
+        raise NotImplementedError("Subclasses must implement the execute method")
+    
+    def validate_parameters(self, params: ToolParams) -> Optional[str]:
         """
-        Safely evaluate a mathematical expression.
+        Validate parameters against the schema (if provided).
         
         Args:
-            expression: The expression to evaluate
-            
+            params (ToolParams): Parameters to validate.
+        
         Returns:
-            The result of the evaluation
-            
-        Raises:
-            ValueError: If the expression contains unsafe constructs
+            Optional[str]: Error message if validation fails, None if parameters are valid.
         """
-        # Get safe evaluation settings from config
-        safe_globals = SECURITY["safe_eval_globals"].copy()
-        safe_locals = SECURITY["safe_eval_locals"].copy()
+        schema = self.get_parameter_schema()
+        if not schema:
+            return None  # No schema to validate against
         
-        # Check for unsafe constructs
-        unsafe_patterns = [
-            "import", "exec", "eval", "compile", "open", "file", 
-            "__", "os.", "sys.", "subprocess", "shutil"
-        ]
-        if any(pattern in expression for pattern in unsafe_patterns):
-            raise ValueError(f"Expression contains unsafe constructs: {expression}")
-        
-        # Evaluate the expression in a safe context
         try:
-            result = eval(expression, safe_globals, safe_locals)
-            return result
+            # Basic validation of required fields
+            if "required" in schema:
+                for field in schema["required"]:
+                    if field not in params:
+                        return f"Missing required parameter: {field}"
+            
+            # More advanced validation could be implemented here
+            # using a proper JSON Schema validator
+            
+            return None  # Validation passed
         except Exception as e:
-            raise ValueError(f"Error evaluating expression: {str(e)}")
+            return f"Parameter validation error: {str(e)}"
+    
+    def create_error_result(self, message: str) -> ToolResult:
+        """
+        Create a ToolResult representing an error.
+        
+        Args:
+            message (str): Error message.
+        
+        Returns:
+            ToolResult: Error result.
+        """
+        return ToolResult(success=False, error=message)
+    
+    def create_success_result(self, data: Any) -> ToolResult:
+        """
+        Create a ToolResult representing success.
+        
+        Args:
+            data (Any): Result data.
+        
+        Returns:
+            ToolResult: Success result.
+        """
+        return ToolResult(success=True, data=data)

@@ -37,6 +37,7 @@ The primary entry point for interacting with the framework.
     *   Uses the `NlpParser` to convert the command to a structured `AgentRequest`.
     *   Routes the request via `IRouter` to the appropriate tool.
     *   Handles execution errors and formats the final response.
+    *   Supports special command `"list tools"` to return information about all registered tools.
     *   Returns an `AgentResult` dictionary.
 
 ### `IRouter` (`src/universal_agent/interfaces/i_router.py`)
@@ -49,12 +50,13 @@ Responsible for managing and routing requests to tools.
 
 ### `ITool` (`src/universal_agent/interfaces/i_tool.py`)
 
-The interface that all tools must implement.
+The interface that all tools must implement. Designed for clarity and ease of implementation by developers seeking to extend the agent.
 
-*   **`id: str` (Property)**: A unique identifier for the tool.
-*   **`name: str` (Property)**: A human-readable name.
-*   **`description: str` (Property)**: A brief description.
-*   **`async execute(params: ToolParams) -> ToolResult`**: Executes the tool's logic with given `params`. Returns a `ToolResult`.
+*   **`id: str` (Property)**: A unique identifier for the tool (e.g., 'file_read', 'web_search'). MUST be unique within a router instance.
+*   **`name: str` (Property)**: A human-readable name (e.g., 'File Reading Tool').
+*   **`description: str` (Property)**: A brief description of the tool's function and capabilities, used for discoverability (e.g., via list_tools) and potentially aiding NLP model context. Should be clear and informative.
+*   **`async execute(params: ToolParams) -> ToolResult`**: Executes the tool's logic with given `params`. MUST handle parameters defined implicitly by the description or explicitly via a schema. MUST return a `ToolResult`. Handles its own internal exceptions and reports them via `ToolResult`.
+*   **`get_parameter_schema() -> Dict | None`** (Optional): Returns a schema (e.g., JSON Schema dict or a Pydantic model) defining the expected structure of `ToolParams` for validation and potentially introspection. Defaults to `None` if not implemented.
 
 ## Core Data Structures (`src/universal_agent/interfaces/types.py`)
 
