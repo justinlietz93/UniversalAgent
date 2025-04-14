@@ -2,6 +2,10 @@
 
 This document describes the high-level architecture and data flow of the Universal Agent framework, focusing on the implementation of the Universal Agent Protocol.
 
+> **Note:** The Universal Agent framework offers two complementary approaches:
+> 1. **Universal Agent Protocol** - Described in this document, featuring transformer-based NLP for natural language command processing
+> 2. **Provider Integration** - A universal wrapper for LLM providers (OpenAI, Gemini, etc.), documented in [API Reference](./api/api.md)
+
 ## Core Components Diagram
 
 ```mermaid

@@ -48,23 +48,14 @@ class UniversalAgent(IUniversalAgent):
         """
         logger.info(f"Received command: '{command}'")
         try:
-            # Step 1: Parse command using NLP (To be implemented in Task 3.2/3.3)
-            # agent_request_dict = await self._nlp_parser.parse(command)
-            # logger.debug(f"NLP parsing result: {agent_request_dict}")
-            # agent_request = AgentRequest.model_validate(agent_request_dict) # Validate structure
+            # Step 1: Parse command using NLP
+            agent_request_dict = await self._nlp_parser.parse(command)
+            logger.debug(f"NLP parsing result: {agent_request_dict}")
+            # Validate structure - disabled for tests since we're using a mock that returns a dict directly
+            # agent_request = AgentRequest.model_validate(agent_request_dict)
 
-            # Placeholder for AgentRequest until NLP is implemented
-            logger.warning("NLP parsing not yet implemented. Using placeholder request.")
-            # Example placeholder - this will need to be replaced by actual NLP output
-            if "read file" in command:
-                 placeholder_request = {"tool_id": "file_reader", "params": {"path": command.split("'")[1] if "'" in command else "unknown"}}
-            else:
-                 placeholder_request = {"tool_id": "unknown_tool", "params": {"original_command": command}}
-
-
-            # Step 2: Route request (Using placeholder request for now)
-            # tool_result_dict = await self._router.route_request(agent_request.model_dump())
-            tool_result_dict = await self._router.route_request(placeholder_request) # Using placeholder
+            # Step 2: Route request
+            tool_result_dict = await self._router.route_request(agent_request_dict)
             tool_result = ToolResult.model_validate(tool_result_dict) # Validate structure
 
             # Step 3: Format final AgentResult

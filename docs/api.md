@@ -1,18 +1,42 @@
-# Universal Agent API Specification
+# Universal Agent Protocol API Specification
 
-This document outlines the core interfaces, data structures, and the primary network API endpoint for the Universal Agent framework.
+This document outlines the core interfaces, data structures, and the primary network API endpoint for the Universal Agent Protocol, which is focused on natural language command processing via transformer-based NLP.
+
+> **Note:** This document describes the Universal Agent Protocol implementation, which provides a natural language interface using transformer-based NLP. For the provider-based API (OpenAI, Gemini, etc.), see the [API Reference](./api/reference.md).
 
 ## Core Interfaces
 
 These abstract base classes define the contracts for the main components of the framework. Implementations must adhere to these interfaces.
 
+### `NlpParser` (`src/universal_agent/utils/nlp_parser.py`)
+
+The Transformer-based NLP parser responsible for interpreting natural language commands.
+
+*   **`__init__(model_name: str = 't5-base') -> None`**:
+    *   Initializes the parser with the specified Hugging Face Transformers model.
+    *   Loads the model and tokenizer.
+    *   Default model is 't5-base'.
+
+*   **`async parse(command: str) -> Dict[str, Any]`**:
+    *   Parses a natural language command into a structured `AgentRequest` dictionary.
+    *   Uses the Transformer model to interpret the command.
+    *   Extracts tool ID and parameters.
+    *   Includes multiple fallback mechanisms for robustness.
+    *   Returns a dictionary with `tool_id` and `params` keys.
+
 ### `IUniversalAgent` (`src/universal_agent/interfaces/i_universal_agent.py`)
 
 The primary entry point for interacting with the framework.
 
+*   **`__init__(router: IRouter, nlp_parser: NlpParser) -> None`**:
+    *   Initializes the agent with an `IRouter` instance and a `NlpParser` instance.
+    *   Validates that the router implements the `IRouter` interface.
+
 *   **`async execute(command: str) -> AgentResult`**:
     *   Processes a natural language `command`.
-    *   Orchestrates NLP parsing, routing via `IRouter`, `ITool` execution, and result formatting.
+    *   Uses the `NlpParser` to convert the command to a structured `AgentRequest`.
+    *   Routes the request via `IRouter` to the appropriate tool.
+    *   Handles execution errors and formats the final response.
     *   Returns an `AgentResult` dictionary.
 
 ### `IRouter` (`src/universal_agent/interfaces/i_router.py`)

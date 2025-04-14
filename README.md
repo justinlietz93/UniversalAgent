@@ -1,22 +1,36 @@
 # Universal Agent
 
-A universal wrapper for interacting with various LLM providers (OpenAI, Gemini, Anthropic, Mistral, etc.) with dynamic capability discovery and unified tool handling.
+A comprehensive framework offering two powerful approaches:
+
+1. **Universal Agent Protocol** - A natural language interface to tools using transformer-based NLP
+2. **Provider Integration** - A universal wrapper for LLM providers (OpenAI, Gemini, etc.)
 
 ## Key Features
 
+### Universal Agent Protocol (Direct NL Interface)
+- **Transformer-Based NLP**: Natural language parsing using Hugging Face Transformers (T5 model)
+- **Dynamic Request Routing**: Routes natural language commands to appropriate tools
+- **Multiple Fallback Mechanisms**: Ensures robust parsing even if the model fails
+- **Unified Tool Interface**: Standard interface for all tools (`ITool`)
+
+### Provider-Based Features
 - **Universal Provider Support**: Works with any LLM provider through dynamic capability analysis
 - **Automatic Adapter Selection**: Chooses the right adapter based on provider documentation
-- **Unified Tool Interface**: Consistent tool execution across all providers
 - **Native & Prompted Tool Support**: Works with both native function calling and prompt engineering
 - **Streaming Support**: Handles streaming responses with tool call detection
+
+### Shared Features
 - **Security**: Comprehensive security features for safe command execution
+- **Tool Ecosystem**: Rich set of built-in tools with consistent interfaces
 
 ## Quick Start
+
+### Provider-Based Usage
 
 ```python
 from universal_agent import UniversalAgent
 
-# Initialize the agent
+# Initialize the agent with a provider
 agent = UniversalAgent(
     provider="openai",
     credentials={"api_key": "your-api-key"}
@@ -50,6 +64,34 @@ response = await agent.generate_response(
 )
 
 print(response)
+```
+
+### Natural Language Interface
+
+```python
+from src.universal_agent.core.agent import UniversalAgent
+from src.universal_agent.router.router import Router
+from src.universal_agent.utils.nlp_parser import NlpParser
+from src.universal_agent.tools.file_tool import FileReaderTool, FileWriterTool
+
+# Initialize core components
+router = Router()
+nlp_parser = NlpParser()  # Uses Hugging Face Transformers (T5 model)
+
+# Create agent with NLP capabilities
+agent = UniversalAgent(router=router, nlp_parser=nlp_parser)
+
+# Register tools with the router
+router.register_tool(FileReaderTool())
+router.register_tool(FileWriterTool())
+
+# Execute natural language commands directly
+result = await agent.execute("read file 'config.json'")
+print(result)
+
+# Execute another command - the NLP parser will detect intent and parameters
+result = await agent.execute("write 'Hello World' to the file example.txt")
+print(result)
 ```
 
 ## Installation

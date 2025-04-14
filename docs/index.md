@@ -1,16 +1,24 @@
 # Universal Agent Documentation
 
-This is the comprehensive documentation for the Universal Agent project, which provides a universal wrapper for interacting with various LLM providers with dynamic capability discovery and unified tool handling.
+This is the comprehensive documentation for the Universal Agent project, which offers two complementary approaches:
+
+1. **Universal Agent Protocol** - A natural language interface to tools using transformer-based NLP (documented in [api.md](api.md))
+2. **Provider Integration** - A universal wrapper for LLM providers like OpenAI, Gemini, etc. (documented in [api/api.md](api/api.md))
 
 ## Documentation Structure
 
-The documentation is organized into the following sections:
+The documentation is organized according to the [Table of Contents](table_of_contents.md) which provides a complete overview of all documentation resources.
+
+### Core Documentation
+
+- [Architecture Overview](architecture.md) - The system architecture and data flow of the Universal Agent Protocol
+- [API Specification](api.md) - Core interfaces, data structures, and API endpoints
+- [Tool Adaptation Plan](tool_adaptation_plan.md) - Strategy for adapting existing tools to the framework
 
 ### API Reference
 
 - [API Reference](./api/reference.md) - Comprehensive reference for all Universal Agent API classes and methods
 - [Custom Tools Guide](./api/custom_tools.md) - Guide to creating and using custom tools
-- [API Overview](./api/api.md) - High-level overview of the Universal Agent API
 
 ### Integration Guides
 
@@ -22,19 +30,20 @@ The documentation is organized into the following sections:
 - [Use Case Examples](./use_cases/use_cases.md) - Detailed examples of implementing Universal Agent for specific use cases
 - [UI Components](./use_cases/components/USE_CASES_REACT_COMPONENT.md) - React component examples for use with Universal Agent
 
-### Implementation
+### Testing & Analysis
 
-- [Status](../STATUS.md) - Current status of the Universal Agent implementation
-- [Implementation Plan](../IMPLEMENTATION_PLAN.md) - Detailed plan for completing the Universal Agent implementation
+- [Test Result Analysis](Test_Result_Analysis.md) - Results from test execution and performance analysis
 
 ## Quick Start
 
 For a quick introduction to Universal Agent, see the [README](../README.md).
 
+### Provider-Based Usage
+
 ```python
 from universal_agent import UniversalAgent
 
-# Initialize the agent
+# Initialize the agent with a provider
 agent = UniversalAgent(
     provider="openai",
     credentials={"api_key": "your-api-key"}
@@ -68,6 +77,36 @@ response = await agent.generate_response(
 )
 
 print(response)
+```
+
+### Natural Language Interface
+
+```python
+from src.universal_agent.core.agent import UniversalAgent
+from src.universal_agent.router.router import Router
+from src.universal_agent.utils.nlp_parser import NlpParser
+from src.universal_agent.tools.file_tool import FileReaderTool, FileWriterTool
+
+# Initialize core components
+router = Router()
+nlp_parser = NlpParser()  # Uses Hugging Face Transformers (T5 model)
+
+# Create agent with NLP capabilities
+agent = UniversalAgent(router=router, nlp_parser=nlp_parser)
+
+# Register tools with the router
+router.register_tool(FileReaderTool())
+router.register_tool(FileWriterTool())
+
+# Execute natural language commands directly
+result = await agent.execute("read the file 'config.json'")
+print(f"Status: {result['status']}")
+print(f"Content: {result['result']}")
+
+# The NLP parser automatically extracts intent and parameters
+result = await agent.execute("save 'Hello World' to a file called example.txt")
+print(f"Status: {result['status']}")
+print(f"Message: {result['message']}")
 ```
 
 ## Configuration
