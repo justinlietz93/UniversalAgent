@@ -85,3 +85,7 @@ dev/computer_use_ootb/install_tools/test_ui-tars_server.py
 dev/ISSUES.md
 dev/ollama_models.md
 dev/AST_findings.md
+
+# Clacky-specific files
+.1024*
+!.1024
